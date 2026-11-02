@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QuoteCheck</title><meta name="description" content="Did they really say that? Validators read the cited source and agree on whether a quote is there, word for word, faithful, distorted or put in the wrong mouth."><meta name="theme-color" content="#0F5F5A">
+<link rel="icon" href="data:image/svg+xml,<svg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'><rect width='512' height='512' fill='%230F5F5A'/><path d='M120 300c0-80 30-130 90-150v50c-25 12-35 35-35 60h35v90h-90zm150 0c0-80 30-130 90-150v50c-25 12-35 35-35 60h35v90h-90z' fill='%23fff'/><circle cx='380' cy='370' r='70' fill='%23F5A524'/><path d='m350 370 22 22 40-45' fill='none' stroke='%230F5F5A' stroke-width='22' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="app.css">
+<style>:root{--acc:#0F5F5A;--soft:#E6F2F1}blockquote{margin:0;font-size:17px;font-weight:600;line-height:1.45}blockquote::before{content:"“"}blockquote::after{content:"”"}</style>
+</head><body>
+<header class="hero"><div class="w">
+  <div class="top"><div class="brand"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" fill="#0F5F5A"/><path d="M120 300c0-80 30-130 90-150v50c-25 12-35 35-35 60h35v90h-90zm150 0c0-80 30-130 90-150v50c-25 12-35 35-35 60h35v90h-90z" fill="#fff"/><circle cx="380" cy="370" r="70" fill="#F5A524"/><path d="m350 370 22 22 40-45" fill="none" stroke="#0F5F5A" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/></svg>QuoteCheck</div><button id="connect" class="ghost" type="button">Connect wallet</button></div>
+  <h1>Did they really say that? <em>Check the source.</em></h1>
+  <p>Paste a quote, who it is attributed to and the page it cites. Validators each read that page and must agree on what it shows; the verdict and the page's sha256 stay on-chain for anyone to look up.</p>
+  <div class="pills"><a href="https://scan.testnet-chain.genlayer.com/address/0xc1098B8287470C3DBa85737C567c3ef5f2dFC101">contract 0xc109…C101 ↗</a><span>testnet bradbury</span><a href="https://github.com/Senjueth/genlayer-quotecheck">source ↗</a></div>
+</div></header>
+<div class="steps w"><ol>
+  <li><small>01</small><b>Submit</b><p>The quote, the speaker, the https page it cites and, optionally, where the quote was published.</p></li>
+  <li><small>02</small><b>Validators read</b><p>Each fetches the page. Word-for-word presence is checked in code; they agree on meaning and on who the page says said it.</p></li>
+  <li><small>03</small><b>Verdict</b><p>Derived in code from what they agreed and stored with the page hash. Anyone can look it up later.</p></li>
+</ol></div>
+<main class="w">
+  <p id="status" class="status" hidden></p>
+  <div class="grid">
+    <div>
+      <section>
+        <h2>Look up</h2>
+        <p class="hint">Fill in the quote, speaker and source on the left, then look up the latest verdict without sending anything.</p>
+        <div style="margin-top:12px"><button class="ghost" id="lookup" type="button">Look up this quote</button></div>
+      </section>
+      <section id="detail" hidden></section>
+      <section>
+        <h2>Recent checks</h2>
+        <div class="tbl"><table>
+          <thead><tr><th>#</th><th>Quote</th><th>Speaker</th><th>Verdict</th></tr></thead>
+          <tbody id="checks"><tr><td colspan="4" class="empty">Reading the contract…</td></tr></tbody>
+        </table></div>
+      </section>
+    </div>
+
+    <aside>
+      <section>
+        <h2>Check a quote</h2>
+        <form id="check">
+          <label>Quote<textarea name="quote" maxlength="620" required></textarea></label>
+          <label>Attributed to<input name="speaker" maxlength="100" required></label>
+          <label>Cited source (https page, text up to 12,000 characters)<input name="source" type="url" required></label>
+          <label>Published in (optional, https)<input name="used_in" type="url"></label>
+          <p class="hint" id="problem"></p>
+          <button type="submit" id="submit" disabled>Check</button>
+        </form>
+      </section>
+      <section>
+        <h2>Verdicts</h2>
+        <dl class="kv">
+          <div><dt>Verbatim</dt><dd>the exact words, from this speaker</dd></div>
+          <div><dt>Paraphrased</dt><dd>same meaning in other words, this speaker</dd></div>
+          <div><dt>Distorted</dt><dd>a passage like it, but the quote changes its meaning</dd></div>
+          <div><dt>Misattributed</dt><dd>the source gives it to someone else</dd></div>
+          <div><dt>Unattributed</dt><dd>the source has it but names no one</dd></div>
+          <div><dt>Not found</dt><dd>the source does not say this</dd></div>
+          <div><dt>Never judged</dt><dd>an unreachable source, or one over 12,000 characters: the call reverts</dd></div>
+        </dl>
+      </section>
+    </aside>
+  </div>
+</main>
+<footer><div class="w"><a href="https://github.com/Senjueth/genlayer-quotecheck">GitHub</a><a href="https://github.com/Senjueth/genlayer-quotecheck#bradbury-evidence">Bradbury evidence</a></div></footer>
+
+<script type="module">
+import { contract, wireWallet, send, status, esc, short, ago, $, EXPLORER } from "./gl.js";
+const qc = contract("0xc1098B8287470C3DBa85737C567c3ef5f2dFC101");
+let me = null;
+const TAG = { VERBATIM: "ok", PARAPHRASED: "ok", DISTORTED: "bad", MISATTRIBUTED: "bad", UNATTRIBUTED: "on", NOT_FOUND: "bad" };
+const label = (v) => v.replace("_", " ").toLowerCase();
+
+// Mirrors the contract's input checks, so the button is only enabled for a call it would accept.
+const URL_RE = /^https:\/\/[A-Za-z0-9.-]+\.[A-Za-z]{2,}(:\d+)?(\/\S*)?$/;
+function problem(f) {
+  const quote = f.quote.split(/\s+/).join(" ").trim().replace(/^["'“”‘’ ]+|["'“”‘’ ]+$/g, "");
+  const speaker = f.speaker.split(/\s+/).join(" ").trim();
+  if (!me) return "Connect a wallet to send a check; looking up works without one.";
+  if (quote.length < 10 || quote.length > 600) return "The quote must be 10–600 characters.";
+  if (speaker.length < 2 || speaker.length > 100) return "The speaker must be 2–100 characters.";
+  if (f.source.trim().length > 500 || !URL_RE.test(f.source.trim())) return "The source must be an https URL with a domain name.";
+  if (f.used_in.trim() && (f.used_in.trim().length > 500 || !URL_RE.test(f.used_in.trim()))) return "“Published in” must be empty or an https URL.";
+  return "";
+}
+
+const fields = () => Object.fromEntries(new FormData($("#check")));
+function refresh() {
+  const p = problem(fields());
+  $("#problem").textContent = p;
+  $("#submit").disabled = !!p;
+}
+
+async function show(id) {
+  const c = await qc.read("get_check", [id]);
+  const d = $("#detail");
+  d.hidden = false;
+  d.innerHTML = `<h2>Check #${c.id} <span class="tag ${TAG[c.verdict]}">${label(c.verdict)}</span></h2>
+    <blockquote>${esc(c.quote)}</blockquote><p class="mut" style="margin:6px 0 0">attributed to ${esc(c.speaker)}</p>
+    <p style="margin:12px 0 0">${esc(c.reason)}.</p>
+    <dl class="kv" style="margin-top:12px">
+      <div><dt>Source</dt><dd><a href="${esc(c.source_url)}">${esc(c.source_url)}</a></dd></div>
+      <div><dt>Source sha256</dt><dd class="mono">${esc(c.source_sha256)}</dd></div>
+      <div><dt>Agreed</dt><dd>word for word: ${c.verbatim ? "yes" : "no"} · meaning: ${esc(c.meaning)} · attribution: ${esc(c.attribution)} · ${c.source_chars} chars read</dd></div>
+      ${c.used_in ? `<div><dt>Published in</dt><dd><a href="${esc(c.used_in)}">${esc(c.used_in)}</a></dd></div>` : ""}
+      <div><dt>Requested by</dt><dd><a class="mono" href="${EXPLORER}/address/${esc(c.requester)}">${short(c.requester)}</a> · ${ago(c.at)}</dd></div>
+    </dl>`;
+  history.replaceState(null, "", `#check-${c.id}`);
+}
+
+async function load(openId) {
+  try {
+    const n = await qc.read("get_count");
+    const rows = await qc.read("get_checks", [Math.max(0, n - 50)]);
+    $("#checks").innerHTML = rows.length ? rows.reverse().map((c) => `<tr style="cursor:pointer" data-id="${c.id}"><td class="num mut">${c.id}</td>
+      <td>${esc(c.quote.length > 90 ? c.quote.slice(0, 90) + "…" : c.quote)}</td><td>${esc(c.speaker)}</td>
+      <td><span class="tag ${TAG[c.verdict]}">${label(c.verdict)}</span></td></tr>`).join("")
+      : `<tr><td colspan="4" class="empty">No checks yet.</td></tr>`;
+    const h = location.hash.match(/^#check-(\d+)$/), id = openId ?? (h ? Number(h[1]) : null);
+    if (Number.isInteger(id) && id < n) await show(id);
+  } catch (e) {
+    $("#checks").innerHTML = `<tr><td colspan="4" class="empty">Could not read the contract: ${esc(e.message)}</td></tr>`;
+  }
+}
+
+$("#checks").addEventListener("click", (e) => { const tr = e.target.closest("tr[data-id]"); if (tr) show(Number(tr.dataset.id)); });
+$("#check").addEventListener("input", refresh);
+$("#check").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = fields();
+  if (problem(f)) return refresh();
+  $("#submit").disabled = true;
+  if (await send(qc, "Check", "check", [f.quote, f.speaker, f.source.trim(), f.used_in.trim()])) {
+    await load(await qc.read("lookup", [f.quote, f.speaker, f.source.trim()]));
+  }
+  refresh();
+});
+$("#lookup").addEventListener("click", async () => {
+  const f = fields();
+  if (!f.quote.trim() || !f.speaker.trim() || !f.source.trim()) return status("Fill in the quote, speaker and source first.", true);
+  try {
+    const id = await qc.read("lookup", [f.quote, f.speaker, f.source.trim()]);
+    if (id < 0) return status("Not checked yet for this speaker and source. Send a check to have it judged.");
+    status("");
+    await show(id);
+  } catch (err) { status(err.message, true); }
+});
+wireWallet((a) => { me = a; refresh(); });
+refresh();
+load();
+</script>
+</body></html>
